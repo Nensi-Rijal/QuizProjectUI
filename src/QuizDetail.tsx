@@ -87,14 +87,6 @@ const QuizDetail:React.FC = () => {
     });
   };
 
-  // Convert seconds to minutes and seconds format
-  const convertTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = time % 60;
-    return `${minutes} minutes and ${seconds} seconds`;
-  };
-
-
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
