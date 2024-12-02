@@ -119,8 +119,7 @@ const QuizDetail:React.FC = () => {
     });
     console.log(formattedAnswers);
     if(formattedAnswers.length === questions.length){
-      axios
-      .post(
+      axios.post(
         `https://quiz-project-api.vercel.app/quizzes/${quizId}/submit/`,
         { answers: formattedAnswers,time_taken: timeTaken  },
         {
