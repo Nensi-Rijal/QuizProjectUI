@@ -27,9 +27,13 @@ const QuizDetail:React.FC = () => {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [userStats, setUserStats] = useState<any>(null);
 
+  // Timer state
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [timeTaken, setTimeTaken] = useState<number>(0); // Time in seconds
+
   useEffect(() => {
     setLoading(true);
-    axios.get(`http://127.0.0.1:8000/quizzes/${quizId}/`,{
+    axios.get(`https://quiz-project-api.vercel.app/quizzes/${quizId}/`,{
         headers:{
             Authorization:`Basic ${btoa('simran:nensi123')}`
         }
@@ -47,7 +51,20 @@ const QuizDetail:React.FC = () => {
       setError("Error fetching quiz data.");
       setLoading(false);
     });
+    setStartTime(Date.now());
   }, [quizId]);
+
+  useEffect(() => {
+    if (startTime) {
+      const intervalId = setInterval(() => {
+        const elapsedTime = Math.floor((Date.now() - startTime) / 1000); // Calculate time in seconds
+        setTimeTaken(elapsedTime); // Update time taken
+      }, 1000);
+
+      // Cleanup interval on component unmount or startTime change
+      return () => clearInterval(intervalId);
+    }
+  }, [startTime]);
 
   const handleAnswerSelect = (questionId: number, answerId: number) => {
     setSelectedAnswers((prevState:any) => ({
@@ -69,6 +86,14 @@ const QuizDetail:React.FC = () => {
       };
     });
   };
+
+  // Convert seconds to minutes and seconds format
+  const convertTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = time % 60;
+    return `${minutes} minutes and ${seconds} seconds`;
+  };
+
 
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
@@ -104,8 +129,8 @@ const QuizDetail:React.FC = () => {
     if(formattedAnswers.length === questions.length){
       axios
       .post(
-        `http://127.0.0.1:8000/quizzes/${quizId}/submit/`,
-        { answers: formattedAnswers },
+        `https://quiz-project-api.vercel.app/quizzes/${quizId}/submit/`,
+        { answers: formattedAnswers,time_taken: timeTaken  },
         {
           headers: {
             Authorization: `Basic ${btoa("simran:nensi123")}`,
@@ -117,9 +142,9 @@ const QuizDetail:React.FC = () => {
         setUserStats(response.data);
         toast.success('Quiz submitted successfully!', { position: 'top-right' });
         console.log(userStats);
-        setTimeout(()=>{
-          navigate('/');
-        },5000);
+        // setTimeout(()=>{
+        //   navigate('/');
+        // },5000);
         console.log(response.data); // Handle success response (e.g., score, message, etc.)
       })
       .catch((error) => {
@@ -150,37 +175,53 @@ const QuizDetail:React.FC = () => {
   return (
     <div className="quiz-detail">
       <ToastContainer />
-      <div className="question-card">
+      {quizSubmitted ? (
+        // Show user stats and congratulations message
+        <div className="congratulations-message">
+          <h2>Congratulations!</h2>
+          <div className="user-stats">
+            <h3>Your Results:</h3>
+            <p><strong>Score:</strong> {userStats.score}</p>
+            <p><strong>Completed in:</strong> {userStats.time_taken} </p>
+            {/* Add any other stats like percentage, correct answers, etc. */}
+          </div>
+          <button onClick={() => navigate('/')} style={{ marginTop: '20px' }}>
+            Go Back to Home
+          </button>
+        </div>
+      ) : (
+        // Show quiz question cards
+        <div className="question-card">
           <h2>{currentQuestion.questions}</h2>
           <div className="answer-options">
-          {currentQuestion.answers.map((answer) => (
-            <div key={answer.id}>
-              <label>
-                {answer.answer_type === 'multiple' ? (
-                  <input
-                    type="checkbox"
-                    name={`question-${currentQuestion.id}`}
-                    value={answer.id}
-                    checked={selectedAnswers[currentQuestion.id]?.includes(answer.id)}
-                    onChange={() => handleMultipleAnswersSelect(currentQuestion.id, answer.id)}
-                  />
-                ) : (
-                  <input
-                    type="radio"
-                    name={`question-${currentQuestion.id}`}
-                    value={answer.id}
-                    checked={selectedAnswers[currentQuestion.id] === answer.id}
-                    onChange={() => handleAnswerSelect(currentQuestion.id, answer.id)}
-                  />
-                )}
-                {answer.answer}
-              </label>
-            </div>
-          ))}
-        </div>
-        {currentQuestion.answers.some((answer) => answer.answer_type === 'multiple') && (
-          <div className="tick-all">Tick all that apply</div>
-        )}
+            {currentQuestion.answers.map((answer) => (
+              <div key={answer.id}>
+                <label>
+                  {answer.answer_type === 'multiple' ? (
+                    <input
+                      type="checkbox"
+                      name={`question-${currentQuestion.id}`}
+                      value={answer.id}
+                      checked={selectedAnswers[currentQuestion.id]?.includes(answer.id)}
+                      onChange={() => handleMultipleAnswersSelect(currentQuestion.id, answer.id)}
+                    />
+                  ) : (
+                    <input
+                      type="radio"
+                      name={`question-${currentQuestion.id}`}
+                      value={answer.id}
+                      checked={selectedAnswers[currentQuestion.id] === answer.id}
+                      onChange={() => handleAnswerSelect(currentQuestion.id, answer.id)}
+                    />
+                  )}
+                  {answer.answer}
+                </label>
+              </div>
+            ))}
+          </div>
+          {currentQuestion.answers.some((answer) => answer.answer_type === 'multiple') && (
+            <div className="tick-all">Tick all that apply</div>
+          )}
           <div className="navigation-buttons">
             <button onClick={handlePrevious} disabled={currentQuestionIndex === 0}>
               Previous
@@ -190,18 +231,12 @@ const QuizDetail:React.FC = () => {
             </button>
           </div>
         </div>
-        {!quizSubmitted && (
+      )}
+      {!quizSubmitted && (
         <div className="submit-section">
           <button onClick={handleSubmit} disabled={!allQuestionsAnswered}>
             Submit Quiz
           </button>
-        </div>
-      )}
-      {quizSubmitted && userStats && (
-        <div className="user-stats">
-          <h3>Your Results:</h3>
-          <p><strong>Score:</strong> {userStats.score}</p>
-          <p><strong>Completed in:</strong> {userStats.timeTaken} seconds</p>
         </div>
       )}
     </div>
