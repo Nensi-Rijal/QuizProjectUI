@@ -7,6 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 interface Answer {
   id: number;
   answer: string;
+  answer_type: string; 
 }
 
 interface Question{
@@ -55,6 +56,20 @@ const QuizDetail:React.FC = () => {
     }));
   };
 
+  const handleMultipleAnswersSelect = (questionId: number, answerId: number) => {
+    setSelectedAnswers((prevState: any) => {
+      const currentAnswers = prevState[questionId] || []; // Default to an empty array if no answers yet
+      const updatedAnswers = currentAnswers.includes(answerId)
+        ? currentAnswers.filter((id: number) => id !== answerId) // Remove the answer if it's already selected
+        : [...currentAnswers, answerId]; // Add the answer if it's not selected yet
+  
+      return {
+        ...prevState,
+        [questionId]: updatedAnswers, // Store the selected answers as an array
+      };
+    });
+  };
+
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
@@ -69,10 +84,23 @@ const QuizDetail:React.FC = () => {
 
   // Submit the quiz
   const handleSubmit = () => {
-    const formattedAnswers = Object.entries(selectedAnswers).map(([questionId, answerId]) => ({
-      question: parseInt(questionId),
-      answer: answerId,
-    }))
+    const formattedAnswers = Object.entries(selectedAnswers).map(([questionId, answerIds]) => {
+      const question = questions.find(q => q.id === parseInt(questionId));
+      const isMultipleAnswer = question?.answers.some(answer => answer.answer_type === 'multiple');
+  
+      // Format the answer data based on the type of question
+      const formattedAnswer = isMultipleAnswer
+        ? Array.isArray(answerIds) // For multiple answers, ensure it's an array
+          ? answerIds
+          : [answerIds] // Convert to array if it's a single answer
+        : answerIds; // For single answer, just pass the single answer id
+  
+      return {
+        question: parseInt(questionId),
+        answer: formattedAnswer,
+      };
+    });
+    console.log(formattedAnswers);
     if(formattedAnswers.length === questions.length){
       axios
       .post(
@@ -122,30 +150,37 @@ const QuizDetail:React.FC = () => {
   return (
     <div className="quiz-detail">
       <ToastContainer />
-      {!quizSubmitted ? (
-        <div className="question-card">
+      <div className="question-card">
           <h2>{currentQuestion.questions}</h2>
           <div className="answer-options">
-            {currentQuestion.answers && currentQuestion.answers.length > 0 ? (
-              currentQuestion.answers.map((answer) => (
-                <div key={answer.id}>
-                  <label>
-                    <input
-                      type="radio"
-                      name={`question-${currentQuestion.id}`}
-                      value={answer.id}
-                      checked={selectedAnswers[currentQuestion.id] === answer.id}
-                      onChange={() => handleAnswerSelect(currentQuestion.id, answer.id)}
-                    />
-                    {answer.answer}
-                  </label>
-                </div>
-              ))
-            ) : (
-              <div>No answers available for this question.</div>
-            )}
-          </div>
-
+          {currentQuestion.answers.map((answer) => (
+            <div key={answer.id}>
+              <label>
+                {answer.answer_type === 'multiple' ? (
+                  <input
+                    type="checkbox"
+                    name={`question-${currentQuestion.id}`}
+                    value={answer.id}
+                    checked={selectedAnswers[currentQuestion.id]?.includes(answer.id)}
+                    onChange={() => handleMultipleAnswersSelect(currentQuestion.id, answer.id)}
+                  />
+                ) : (
+                  <input
+                    type="radio"
+                    name={`question-${currentQuestion.id}`}
+                    value={answer.id}
+                    checked={selectedAnswers[currentQuestion.id] === answer.id}
+                    onChange={() => handleAnswerSelect(currentQuestion.id, answer.id)}
+                  />
+                )}
+                {answer.answer}
+              </label>
+            </div>
+          ))}
+        </div>
+        {currentQuestion.answers.some((answer) => answer.answer_type === 'multiple') && (
+          <div className="tick-all">Tick all that apply</div>
+        )}
           <div className="navigation-buttons">
             <button onClick={handlePrevious} disabled={currentQuestionIndex === 0}>
               Previous
@@ -154,23 +189,19 @@ const QuizDetail:React.FC = () => {
               Next
             </button>
           </div>
-
-          <div className="submit-section">
-            <button onClick={handleSubmit} disabled={!allQuestionsAnswered}>
-              Submit Quiz
-            </button>
-          </div>
         </div>
-      ) : (
+        {!quizSubmitted && (
+        <div className="submit-section">
+          <button onClick={handleSubmit} disabled={!allQuestionsAnswered}>
+            Submit Quiz
+          </button>
+        </div>
+      )}
+      {quizSubmitted && userStats && (
         <div className="user-stats">
-          <h3>Congratulations! You have successfully completed the quiz.</h3>
-          <p>
-            <strong>Score:</strong> {userStats?.score}
-          </p>
-          <p>
-            <strong>Time Taken:</strong> {userStats?.timeTaken} seconds
-          </p>
-          <button onClick={() => navigate('/')}>Go Back to Quiz List</button>
+          <h3>Your Results:</h3>
+          <p><strong>Score:</strong> {userStats.score}</p>
+          <p><strong>Completed in:</strong> {userStats.timeTaken} seconds</p>
         </div>
       )}
     </div>
