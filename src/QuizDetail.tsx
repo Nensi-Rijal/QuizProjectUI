@@ -33,7 +33,8 @@ const QuizDetail:React.FC = () => {
 
   useEffect(() => {
     setLoading(true);
-    axios.get(`https://quiz-project-api.vercel.app/quizzes/${quizId}/`,{
+    // https://quiz-project-api.vercel.app
+    axios.get(`https://quiz-project-api.vercel.app/${quizId}/`,{
         headers:{
             Authorization:`Basic ${btoa('simran:nensi123')}`
         }
@@ -119,8 +120,9 @@ const QuizDetail:React.FC = () => {
     });
     console.log(formattedAnswers);
     if(formattedAnswers.length === questions.length){
+      // http://127.0.0.1:8000/
       axios.post(
-        `https://quiz-project-api.vercel.app/quizzes/${quizId}/submit/`,
+        `https://quiz-project-api.vercel.app/${quizId}/submit/`,
         { answers: formattedAnswers,time_taken: timeTaken  },
         {
           headers: {
