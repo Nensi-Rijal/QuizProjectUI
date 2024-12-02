@@ -21,7 +21,7 @@ const QuizList: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true); // New loading state
 
     useEffect(() => {
-        axios.get('https://quiz-project-api.vercel.app/quizzes/',{
+        axios.get('http://127.0.0.1:8000/quizzes/',{
             headers:{
                 Authorization:`Basic ${btoa('simran:nensi123')}`
             }
